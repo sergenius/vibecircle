@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
+import { Link } from 'react-router-dom';
 import {
   HelpCircle,
   Search,
@@ -141,7 +142,7 @@ export function Help() {
       title: 'User Guide',
       description: 'Comprehensive documentation',
       icon: Book,
-      action: '/guide',
+      action: 'https://docs.vibecircle.com',
       primary: false,
     },
   ];
@@ -193,6 +194,9 @@ export function Help() {
       >
         {contactOptions.map((option, index) => {
           const Icon = option.icon;
+          const isExternal = option.action.startsWith('http') || option.action.startsWith('mailto');
+          const isLink = option.action.startsWith('/');
+          
           return (
             <motion.div
               key={option.title}
@@ -204,6 +208,13 @@ export function Help() {
                   ? 'border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-900/20 hover:border-blue-300'
                   : 'border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800 hover:border-gray-300'
               }`}
+              onClick={() => {
+                if (isLink) {
+                  window.location.href = option.action;
+                } else if (isExternal) {
+                  window.open(option.action, '_blank');
+                }
+              }}
             >
               <div className={`w-12 h-12 rounded-lg flex items-center justify-center mb-4 ${
                 option.primary 
@@ -347,14 +358,18 @@ export function Help() {
           Can't find what you're looking for? Our support team is here to help.
         </p>
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
-          <Button variant="primary">
-            <Mail className="w-4 h-4 mr-2" />
-            Contact Support
-          </Button>
-          <Button variant="outline">
-            <MessageCircle className="w-4 h-4 mr-2" />
-            Community Forum
-          </Button>
+          <a href="mailto:support@vibecircle.com">
+            <Button variant="primary">
+              <Mail className="w-4 h-4 mr-2" />
+              Contact Support
+            </Button>
+          </a>
+          <Link to="/community">
+            <Button variant="outline">
+              <MessageCircle className="w-4 h-4 mr-2" />
+              Community Forum
+            </Button>
+          </Link>
         </div>
       </motion.div>
     </div>

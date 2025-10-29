@@ -18,13 +18,24 @@ import { SearchPage } from './pages/Search';
 import { Settings } from './pages/Settings';
 import { Safety } from './pages/Safety';
 import { Help } from './pages/Help';
+import { Community } from './pages/Community';
+import { Tutorials } from './pages/Tutorials';
 
 // Auth components
 import { LoginForm } from './components/auth/LoginForm';
 import { RegisterForm } from './components/auth/RegisterForm';
 
+// Development flag: Set to true to bypass auth for UI testing
+// Should ALWAYS be false in production
+const BYPASS_AUTH = import.meta.env.MODE === 'development' && false;
+
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
+
+  // Allow bypass in dev mode when flag is true
+  if (BYPASS_AUTH) {
+    return <>{children}</>;
+  }
 
   if (isLoading) {
     return (
@@ -87,6 +98,8 @@ function AppRoutes() {
         <Route path="settings" element={<Settings />} />
         <Route path="safety" element={<Safety />} />
         <Route path="help" element={<Help />} />
+        <Route path="community" element={<Community />} />
+        <Route path="tutorials" element={<Tutorials />} />
       </Route>
     </Routes>
   );
