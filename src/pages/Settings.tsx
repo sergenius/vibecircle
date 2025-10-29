@@ -40,6 +40,20 @@ export function Settings() {
     showLocation: true,
     dataDownloadRequested: false,
   });
+ 
+  const [accountForm, setAccountForm] = useState({
+    displayName: user?.displayName || '',
+    username: user?.username || '',
+    email: user?.email || '',
+    bio: user?.bio || '',
+    location: user?.location || '',
+  });
+ 
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [selectedLanguage, setSelectedLanguage] = useState('English');
+  const [isSaving, setIsSaving] = useState(false);
 
   const tabs = [
     { key: 'account', label: 'Account', icon: User },
@@ -51,6 +65,119 @@ export function Settings() {
 
   const updateSetting = (key: string, value: any) => {
     setSettings(prev => ({ ...prev, [key]: value }));
+  };
+ 
+  const handleSaveAccountSettings = async () => {
+    if (!accountForm.displayName.trim() || !accountForm.email.trim()) {
+      alert('Please fill in all required fields');
+      return;
+    }
+ 
+    setIsSaving(true);
+    try {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      // addNotification({
+      //   userId: user!.id,
+      //   type: 'like',
+      //   message: 'Account settings saved successfully!',
+      //   isRead: false,
+      // });
+    } catch (error) {
+      // addNotification({
+      //   userId: user!.id,
+      //   type: 'like',
+      //   message: 'Failed to save account settings',
+      //   isRead: false,
+      // });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+ 
+  const handleChangeLanguage = async (language: string) => {
+    setSelectedLanguage(language);
+    // addNotification({
+    //   userId: user!.id,
+    //   type: 'like',
+    //   message: `Language changed to ${language}`,
+    //   isRead: false,
+    // });
+  };
+ 
+  const handleChangePassword = async () => {
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      alert('Please fill in all password fields');
+      return;
+    }
+ 
+    if (newPassword !== confirmPassword) {
+      alert('New passwords do not match');
+      return;
+    }
+ 
+    if (newPassword.length < 8) {
+      alert('Password must be at least 8 characters');
+      return;
+    }
+ 
+    setIsSaving(true);
+    try {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      // addNotification({
+      //   userId: user!.id,
+      //   type: 'like',
+      //   message: 'Password changed successfully!',
+      //   isRead: false,
+      // });
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (error) {
+      // addNotification({
+      //   userId: user!.id,
+      //   type: 'like',
+      //   message: 'Failed to change password',
+      //   isRead: false,
+      // });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+ 
+  const handleSaveNotificationSettings = async () => {
+    setIsSaving(true);
+    try {
+      await new Promise(resolve => setTimeout(resolve, 800));
+      // addNotification({
+      //   userId: user!.id,
+      //   type: 'like',
+      //   message: 'Notification settings saved!',
+      //   isRead: false,
+      // });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+ 
+  const handleSavePrivacySettings = async () => {
+    setIsSaving(true);
+    try {
+      await new Promise(resolve => setTimeout(resolve, 800));
+      // addNotification({
+      //   userId: user!.id,
+      //   type: 'like',
+      //   message: 'Privacy settings saved!',
+      //   isRead: false,
+      // });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+ 
+  const handleDeleteAccount = async () => {
+    setIsDeleteModalOpen(false);
+    alert('Account deletion would be processed here with confirmation email');
+    // In production, this would call an API endpoint
   };
 
   const handleDataDownload = () => {
@@ -128,18 +255,22 @@ export function Settings() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <Input
                       label="Display Name"
-                      defaultValue={user?.displayName}
+                      value={accountForm.displayName}
+                      onChange={(e) => setAccountForm({ ...accountForm, displayName: e.target.value })}
                     />
                     <Input
                       label="Username"
-                      defaultValue={user?.username}
+                      value={accountForm.username}
+                      onChange={(e) => setAccountForm({ ...accountForm, username: e.target.value })}
+                      disabled
                     />
                   </div>
                   
                   <Input
                     label="Email"
                     type="email"
-                    defaultValue={user?.email}
+                    value={accountForm.email}
+                    onChange={(e) => setAccountForm({ ...accountForm, email: e.target.value })}
                   />
                   
                   <div>
@@ -148,18 +279,55 @@ export function Settings() {
                     </label>
                     <textarea
                       rows={3}
-                      defaultValue={user?.bio}
+                      value={accountForm.bio}
+                      onChange={(e) => setAccountForm({ ...accountForm, bio: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 dark:bg-gray-800 dark:text-gray-100"
                     />
                   </div>
 
                   <Input
                     label="Location"
-                    defaultValue={user?.location}
+                    value={accountForm.location}
+                    onChange={(e) => setAccountForm({ ...accountForm, location: e.target.value })}
                   />
 
-                  <div className="pt-4">
-                    <Button variant="primary">Save Changes</Button>
+                  <div className="space-y-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                    <h3 className="font-medium text-gray-900 dark:text-white">Change Password</h3>
+                    <Input
+                      label="Current Password"
+                      type="password"
+                      value={currentPassword}
+                      onChange={(e) => setCurrentPassword(e.target.value)}
+                    />
+                    <Input
+                      label="New Password"
+                      type="password"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                    />
+                    <Input
+                      label="Confirm Password"
+                      type="password"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="pt-4 flex space-x-3">
+                    <Button 
+                      variant="primary"
+                      onClick={handleSaveAccountSettings}
+                      isLoading={isSaving}
+                    >
+                      Save Account Settings
+                    </Button>
+                    <Button 
+                      variant="outline"
+                      onClick={handleChangePassword}
+                      isLoading={isSaving}
+                    >
+                      Change Password
+                    </Button>
                   </div>
                 </div>
               </div>
@@ -249,6 +417,16 @@ export function Settings() {
                   <p className="text-sm text-blue-700 dark:text-blue-400">
                     VibeCircle is designed for authentic connections. Your privacy settings help you control who can interact with you while maintaining the friendly, open nature of our community.
                   </p>
+                </div>
+
+                <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+                  <Button 
+                    variant="primary"
+                    onClick={handleSavePrivacySettings}
+                    isLoading={isSaving}
+                  >
+                    Save Privacy Settings
+                  </Button>
                 </div>
               </div>
             )}
@@ -365,6 +543,16 @@ export function Settings() {
                     </div>
                   </div>
                 </div>
+
+                <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+                  <Button 
+                    variant="primary"
+                    onClick={handleSaveNotificationSettings}
+                    isLoading={isSaving}
+                  >
+                    Save Notification Settings
+                  </Button>
+                </div>
               </div>
             )}
 
@@ -401,7 +589,11 @@ export function Settings() {
                     title="Language"
                     description="Select your language"
                   >
-                    <select className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded-lg text-sm dark:bg-gray-700">
+                    <select 
+                      value={selectedLanguage}
+                      onChange={(e) => handleChangeLanguage(e.target.value)}
+                      className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded-lg text-sm dark:bg-gray-700"
+                    >
                       <option>English</option>
                       <option>Spanish</option>
                       <option>French</option>
