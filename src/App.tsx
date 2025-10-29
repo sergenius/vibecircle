@@ -19,6 +19,8 @@ import { SearchPage } from './pages/Search';
 import { Settings } from './pages/Settings';
 import { Safety } from './pages/Safety';
 import { Help } from './pages/Help';
+import { Community } from './pages/Community';
+import { Tutorials } from './pages/Tutorials';
 
 // Auth components
 import { LoginForm } from './components/auth/LoginForm';
@@ -97,6 +99,8 @@ function AppRoutes() {
         <Route path="settings" element={<Settings />} />
         <Route path="safety" element={<Safety />} />
         <Route path="help" element={<Help />} />
+        <Route path="community" element={<Community />} />
+        <Route path="tutorials" element={<Tutorials />} />
       </Route>
     </Routes>
   );
