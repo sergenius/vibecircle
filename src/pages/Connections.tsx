@@ -13,7 +13,7 @@ import {
   MoreHorizontal,
   AlertTriangle,
   Copy,
-  BlockIcon,
+  Ban,
 } from 'lucide-react';
 import { Avatar } from '../components/ui/Avatar';
 import { Badge } from '../components/ui/Badge';
@@ -461,7 +461,7 @@ export function Connections() {
                             }}
                             className="w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center space-x-2"
                           >
-                            <BlockIcon className="w-4 h-4" />
+                            <Ban className="w-4 h-4" />
                             <span>Block User</span>
                           </button>
                         </div>
