@@ -97,7 +97,7 @@ function App() {
     <ThemeProvider>
       <AuthProvider>
         <NotificationProvider>
-          <Router>
+          <Router basename="/vibecircle">
             <AppRoutes />
           </Router>
         </NotificationProvider>
