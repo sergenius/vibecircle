@@ -11,17 +11,19 @@ import { Badge } from '../ui/Badge';
 import { useAuth } from '../../contexts/AuthContext';
 
 const registerSchema = z.object({
-  email: z.string().email('Please enter a valid email address'),
+  email: z.string().min(1, 'Email is required').email('Please enter a valid email address'),
   password: z.string()
+    .min(1, 'Password is required')
     .min(8, 'Password must be at least 8 characters')
     .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, 'Password must contain uppercase, lowercase, and number'),
-  confirmPassword: z.string(),
+  confirmPassword: z.string().min(1, 'Please confirm your password'),
   username: z.string()
+    .min(1, 'Username is required')
     .min(3, 'Username must be at least 3 characters')
     .max(20, 'Username must be less than 20 characters')
     .regex(/^[a-zA-Z0-9_]+$/, 'Username can only contain letters, numbers, and underscores'),
-  displayName: z.string().min(2, 'Display name must be at least 2 characters'),
-  age: z.number().min(13, 'You must be at least 13 years old').max(120, 'Please enter a valid age'),
+  displayName: z.string().min(1, 'Display name is required').min(2, 'Display name must be at least 2 characters'),
+  age: z.coerce.number().min(13, 'You must be at least 13 years old').max(120, 'Please enter a valid age'),
   interests: z.array(z.string()).min(3, 'Please select at least 3 interests'),
   agreeTerms: z.boolean().refine(val => val === true, 'You must agree to the terms'),
 }).refine(data => data.password === data.confirmPassword, {
@@ -56,6 +58,12 @@ export function RegisterForm() {
   } = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
+      email: '',
+      password: '',
+      confirmPassword: '',
+      username: '',
+      displayName: '',
+      age: undefined,
       interests: [],
       agreeTerms: false,
     },

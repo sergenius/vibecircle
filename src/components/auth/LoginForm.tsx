@@ -10,8 +10,8 @@ import { Input } from '../ui/Input';
 import { useAuth } from '../../contexts/AuthContext';
 
 const loginSchema = z.object({
-  email: z.string().email('Please enter a valid email address'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
+  email: z.string().min(1, 'Email is required').email('Please enter a valid email address'),
+  password: z.string().min(1, 'Password is required').min(6, 'Password must be at least 6 characters'),
 });
 
 type LoginFormData = z.infer<typeof loginSchema>;
@@ -28,6 +28,10 @@ export function LoginForm() {
     setError,
   } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
+    defaultValues: {
+      email: '',
+      password: '',
+    },
   });
 
   const onSubmit = async (data: LoginFormData) => {
