@@ -502,7 +502,7 @@ export function Events() {
             </label>
             <Input
               type="text"
-              placeholder={createForm.isVirtual ? 'https://zoom.us/..." : "City, Venue Name, or Address"}
+              placeholder={createForm.isVirtual ? 'https://zoom.us/...' : 'City, Venue Name, or Address'}
               value={createForm.location}
               onChange={(e) => setCreateForm({ ...createForm, location: e.target.value })}
             />
