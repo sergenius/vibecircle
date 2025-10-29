@@ -474,7 +474,10 @@ export function Connections() {
 
             {/* Chat Messages */}
             <div className="flex-1">
-              <ChatBox connectionId={selectedConnection.id} />
+              <ChatBox 
+                connectionId={selectedConnection.id} 
+                friendId={selectedConnection.friendId}
+              />
             </div>
           </>
         ) : (
