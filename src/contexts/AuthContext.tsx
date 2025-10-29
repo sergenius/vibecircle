@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useReducer, ReactNode, useEffect } from 'react';
+import { supabase } from '../lib/supabase';
 import { User } from '../types';
 
 interface AuthState {
@@ -63,7 +64,7 @@ function authReducer(state: AuthState, action: AuthAction): AuthState {
 interface AuthContextType extends AuthState {
   login: (email: string, password: string) => Promise<void>;
   register: (data: RegisterData) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
   updateUser: (data: Partial<User>) => void;
 }
 
@@ -78,110 +79,180 @@ interface RegisterData {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Helper function to convert Supabase profile to User type
+const profileToUser = async (profile: any, authUserId: string): Promise<User> => {
+  const { data: userBadges } = await supabase
+    .from('user_badges')
+    .select('badge_id, badges(*), earned_at')
+    .eq('user_id', authUserId);
+
+  const badges = userBadges?.map((ub: any) => ({
+    id: ub.badges.id,
+    name: ub.badges.name,
+    description: ub.badges.description,
+    icon: ub.badges.icon,
+    color: ub.badges.color,
+    earnedAt: new Date(ub.earned_at),
+  })) || [];
+
+  return {
+    id: profile.id,
+    email: profile.email || '',
+    username: profile.username,
+    displayName: profile.display_name,
+    avatar: profile.avatar,
+    vibeVideo: profile.vibe_video,
+    bio: profile.bio,
+    age: profile.age,
+    location: profile.location,
+    interests: profile.interests || [],
+    values: profile.values || [],
+    authenticityScore: profile.authenticity_score,
+    friendsCount: profile.friends_count,
+    circlesCount: profile.circles_count,
+    joinedAt: new Date(profile.created_at),
+    isOnline: profile.is_online,
+    badges,
+  };
+};
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(authReducer, initialState);
 
-  // Mock authentication functions
   const login = async (email: string, password: string) => {
     dispatch({ type: 'LOGIN_START' });
-    
+
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      const mockUser: User = {
-        id: '1',
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
         email,
-        username: 'vibemateuser',
-        displayName: 'Vibe User',
-        avatar: 'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&fit=crop',
-        bio: 'Love connecting with new friends through authentic conversations!',
-        age: 25,
-        location: 'San Francisco, CA',
-        interests: ['Photography', 'Hiking', 'Cooking', 'Music'],
-        values: ['Authenticity', 'Kindness', 'Growth'],
-        authenticityScore: 92,
-        friendsCount: 47,
-        circlesCount: 8,
-        joinedAt: new Date('2023-01-15'),
-        isOnline: true,
-        badges: [
-          {
-            id: '1',
-            name: 'Early Adopter',
-            description: 'One of the first to join VibeCircle',
-            icon: '🌟',
-            color: '#F59E0B',
-            earnedAt: new Date('2023-01-15'),
-          }
-        ],
-      };
-      
-      localStorage.setItem('vibecircle_user', JSON.stringify(mockUser));
-      dispatch({ type: 'LOGIN_SUCCESS', payload: mockUser });
-    } catch (error) {
-      dispatch({ type: 'LOGIN_ERROR', payload: 'Login failed' });
+        password,
+      });
+
+      if (authError) throw authError;
+      if (!authData.user) throw new Error('No user returned');
+
+      // Fetch user profile
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', authData.user.id)
+        .single();
+
+      if (profileError) throw profileError;
+
+      const user = await profileToUser({ ...profile, email: authData.user.email }, authData.user.id);
+      dispatch({ type: 'LOGIN_SUCCESS', payload: user });
+    } catch (error: any) {
+      dispatch({ type: 'LOGIN_ERROR', payload: error.message || 'Login failed' });
+      throw error;
     }
   };
 
   const register = async (data: RegisterData) => {
     dispatch({ type: 'LOGIN_START' });
-    
+
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      const mockUser: User = {
-        id: Date.now().toString(),
+      const { data: authData, error: authError } = await supabase.auth.signUp({
         email: data.email,
-        username: data.username,
-        displayName: data.displayName,
-        bio: '',
-        age: data.age,
-        location: '',
-        interests: data.interests,
-        values: [],
-        authenticityScore: 75,
-        friendsCount: 0,
-        circlesCount: 0,
-        joinedAt: new Date(),
-        isOnline: true,
-        badges: [],
-      };
-      
-      localStorage.setItem('vibecircle_user', JSON.stringify(mockUser));
-      dispatch({ type: 'LOGIN_SUCCESS', payload: mockUser });
-    } catch (error) {
-      dispatch({ type: 'LOGIN_ERROR', payload: 'Registration failed' });
+        password: data.password,
+        options: {
+          data: {
+            username: data.username,
+            display_name: data.displayName,
+            age: data.age,
+          },
+        },
+      });
+
+      if (authError) throw authError;
+      if (!authData.user) throw new Error('No user returned');
+
+      // Update profile with interests
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({
+          interests: data.interests,
+        })
+        .eq('id', authData.user.id);
+
+      if (updateError) throw updateError;
+
+      // Fetch complete profile
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', authData.user.id)
+        .single();
+
+      if (profileError) throw profileError;
+
+      const user = await profileToUser({ ...profile, email: authData.user.email }, authData.user.id);
+      dispatch({ type: 'LOGIN_SUCCESS', payload: user });
+    } catch (error: any) {
+      dispatch({ type: 'LOGIN_ERROR', payload: error.message || 'Registration failed' });
+      throw error;
     }
   };
 
-  const logout = () => {
-    localStorage.removeItem('vibecircle_user');
+  const logout = async () => {
+    await supabase.auth.signOut();
     dispatch({ type: 'LOGOUT' });
   };
 
   const updateUser = (data: Partial<User>) => {
     dispatch({ type: 'UPDATE_USER', payload: data });
-    if (state.user) {
-      const updatedUser = { ...state.user, ...data };
-      localStorage.setItem('vibecircle_user', JSON.stringify(updatedUser));
-    }
   };
 
-  // Check for stored user on mount
+  // Check for existing session on mount
   useEffect(() => {
-    const storedUser = localStorage.getItem('vibecircle_user');
-    if (storedUser) {
+    const initAuth = async () => {
       try {
-        const user = JSON.parse(storedUser);
-        dispatch({ type: 'LOGIN_SUCCESS', payload: user });
+        const { data: { session } } = await supabase.auth.getSession();
+
+        if (session?.user) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', session.user.id)
+            .single();
+
+          if (profile) {
+            const user = await profileToUser({ ...profile, email: session.user.email }, session.user.id);
+            dispatch({ type: 'LOGIN_SUCCESS', payload: user });
+          } else {
+            dispatch({ type: 'LOGOUT' });
+          }
+        } else {
+          dispatch({ type: 'LOGOUT' });
+        }
       } catch (error) {
         dispatch({ type: 'LOGOUT' });
       }
-    } else {
-      dispatch({ type: 'LOGOUT' });
-    }
+    };
+
+    initAuth();
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' && session?.user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', session.user.id)
+          .single();
+
+        if (profile) {
+          const user = await profileToUser({ ...profile, email: session.user.email }, session.user.id);
+          dispatch({ type: 'LOGIN_SUCCESS', payload: user });
+        }
+      } else if (event === 'SIGNED_OUT') {
+        dispatch({ type: 'LOGOUT' });
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   const value: AuthContextType = {
