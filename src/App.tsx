@@ -23,8 +23,39 @@ import { Help } from './pages/Help';
 import { LoginForm } from './components/auth/LoginForm';
 import { RegisterForm } from './components/auth/RegisterForm';
 
+/**
+ * CURRENT APPLICATION STATUS: ~35% FUNCTIONAL
+ * 
+ * This application is currently a MOCKUP with mostly non-functional UI elements.
+ * For a comprehensive analysis of all underdeveloped sections, see CLAUDE.md
+ * 
+ * SUMMARY:
+ * ✅ UI/UX: 95% complete (beautiful, production-ready design)
+ * ❌ Functionality: 35% complete (mostly mock data, non-persisting)
+ * ❌ Backend Integration: 15% complete (needs full integration)
+ * ❌ Real-time Features: 0% complete (not implemented)
+ * 
+ * CRITICAL ISSUES (Must Fix First):
+ * - All button actions use mock data or don't do anything
+ * - No data persistence across page reloads
+ * - Database schema incomplete
+ * - Missing API integration layer
+ * - No real authentication backend
+ * - No WebSocket for real-time features
+ * 
+ * See CLAUDE.md for detailed breakdown of 100+ action items
+ */
+// Development flag: Set to true to bypass auth for UI testing
+// Should ALWAYS be false in production
+const BYPASS_AUTH = import.meta.env.MODE === 'development' && false;
+
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
+
+  // Allow bypass in dev mode when flag is true
+  if (BYPASS_AUTH) {
+    return <>{children}</>;
+  }
 
   if (isLoading) {
     return (
