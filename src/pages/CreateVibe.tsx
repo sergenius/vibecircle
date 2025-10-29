@@ -190,11 +190,40 @@ export function CreateVibe() {
 
   const onSubmit = async (data: VibeFormData) => {
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
+      if (!recordedVideo || !user) {
+        throw new Error('No video recorded');
+      }
+
+      // Fetch the video blob
+      const response = await fetch(recordedVideo);
+      const videoBlob = await response.blob();
+
+      // Import storage service
+      const { storageService } = await import('../services/storage');
+      const { supabase } = await import('../lib/supabase');
+
+      // Upload video to Supabase Storage
+      const videoUrl = await storageService.uploadVibeVideo(videoBlob, user.id);
+
+      // Create vibe entry in database
+      const { data: vibeData, error } = await supabase
+        .from('vibes')
+        .insert({
+          user_id: user.id,
+          video_url: videoUrl,
+          description: data.description,
+          mood: data.mood,
+          tags: data.tags,
+          is_private: data.isPrivate,
+          created_at: new Date().toISOString(),
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
       addNotification({
-        userId: user!.id,
+        userId: user.id,
         type: 'like',
         message: 'Your vibe has been shared successfully!',
         isRead: false,
@@ -203,6 +232,12 @@ export function CreateVibe() {
       navigate('/');
     } catch (error) {
       console.error('Error creating vibe:', error);
+      addNotification({
+        userId: user!.id,
+        type: 'like',
+        message: 'Failed to upload vibe. Please try again.',
+        isRead: false,
+      });
     }
   };
 
