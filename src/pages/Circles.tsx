@@ -256,8 +256,6 @@ export function Circles() {
               />
             </div>
           </div>
-          <Button variant="outline" onClick={() => setShowFilters(true)}>
-            <Filter className="w-4 h-4 mr-2" />
           <Button variant="outline" onClick={() => setIsFiltersModalOpen(true)}>
             <Sliders className="w-4 h-4 mr-2" />
             More Filters
