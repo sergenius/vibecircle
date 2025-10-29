@@ -123,13 +123,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'LOGIN_START' });
 
     try {
+      console.log('Attempting login with email:', email);
+
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
-      if (authError) throw authError;
+      if (authError) {
+        console.error('Supabase auth error:', authError);
+        throw authError;
+      }
       if (!authData.user) throw new Error('No user returned');
+
+      console.log('User authenticated:', authData.user.id);
 
       // Fetch user profile
       const { data: profile, error: profileError } = await supabase
@@ -138,11 +145,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .eq('id', authData.user.id)
         .single();
 
-      if (profileError) throw profileError;
+      if (profileError) {
+        console.error('Profile fetch error:', profileError);
+        throw profileError;
+      }
+
+      console.log('Profile fetched:', profile);
 
       const user = await profileToUser({ ...profile, email: authData.user.email }, authData.user.id);
       dispatch({ type: 'LOGIN_SUCCESS', payload: user });
     } catch (error: any) {
+      console.error('Login error:', error);
       dispatch({ type: 'LOGIN_ERROR', payload: error.message || 'Login failed' });
       throw error;
     }
@@ -152,6 +165,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'LOGIN_START' });
 
     try {
+      console.log('Attempting registration for:', data.email);
+
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: data.email,
         password: data.password,
@@ -164,8 +179,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         },
       });
 
-      if (authError) throw authError;
+      if (authError) {
+        console.error('Supabase signup error:', authError);
+        throw authError;
+      }
       if (!authData.user) throw new Error('No user returned');
+
+      console.log('User created:', authData.user.id);
+
+      // Wait a bit for the trigger to create the profile
+      await new Promise(resolve => setTimeout(resolve, 1000));
 
       // Update profile with interests
       const { error: updateError } = await supabase
@@ -175,7 +198,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         })
         .eq('id', authData.user.id);
 
-      if (updateError) throw updateError;
+      if (updateError) {
+        console.error('Profile update error:', updateError);
+        throw updateError;
+      }
+
+      console.log('Profile updated with interests');
 
       // Fetch complete profile
       const { data: profile, error: profileError } = await supabase
@@ -184,11 +212,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .eq('id', authData.user.id)
         .single();
 
-      if (profileError) throw profileError;
+      if (profileError) {
+        console.error('Profile fetch error:', profileError);
+        throw profileError;
+      }
+
+      console.log('Complete profile:', profile);
 
       const user = await profileToUser({ ...profile, email: authData.user.email }, authData.user.id);
       dispatch({ type: 'LOGIN_SUCCESS', payload: user });
     } catch (error: any) {
+      console.error('Registration error:', error);
       dispatch({ type: 'LOGIN_ERROR', payload: error.message || 'Registration failed' });
       throw error;
     }
