@@ -97,7 +97,7 @@ export default function CreateVibeScreen() {
     );
   }
 
-  const startRecording = async () => {
+  const startRecording = () => {
     if (cameraRef.current && !isRecording) {
       try {
         setIsRecording(true);
@@ -109,7 +109,6 @@ export default function CreateVibeScreen() {
         timerScale.value = withTiming(1, { duration: 200 });
         
         // Simulate recording (in real app, use cameraRef.current.recordAsync())
-        console.log('Recording started');
       } catch (error) {
         console.error('Failed to start recording:', error);
         setIsRecording(false);
@@ -117,7 +116,7 @@ export default function CreateVibeScreen() {
     }
   };
 
-  const stopRecording = async () => {
+  const stopRecording = () => {
     if (isRecording) {
       try {
         setIsRecording(false);
@@ -129,7 +128,6 @@ export default function CreateVibeScreen() {
         setRecordedVibe(mockVideoUri);
         setContextRecordedVibe(mockVideoUri);
         
-        console.log('Recording stopped');
       } catch (error) {
         console.error('Failed to stop recording:', error);
       }

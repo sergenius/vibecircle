@@ -51,6 +51,7 @@ export function Circles() {
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [joinedCircles, setJoinedCircles] = useState<string[]>(['1', '2']);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
   const [isFiltersModalOpen, setIsFiltersModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [tagInput, setTagInput] = useState('');
@@ -255,6 +256,8 @@ export function Circles() {
               />
             </div>
           </div>
+          <Button variant="outline" onClick={() => setShowFilters(true)}>
+            <Filter className="w-4 h-4 mr-2" />
           <Button variant="outline" onClick={() => setIsFiltersModalOpen(true)}>
             <Sliders className="w-4 h-4 mr-2" />
             More Filters

@@ -124,8 +124,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'LOGIN_START' });
 
     try {
-      console.log('Attempting login with email:', email);
-
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -140,10 +138,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       if (!authData.user) throw new Error('No user returned');
 
-      console.log('User authenticated:', authData.user.id);
-
-      // Fetch user data from public.users
-      console.log('Fetching user from public.users:', authData.user.id);
       const { data: userData, error: userError } = await supabase
         .from('users')
         .select('*')
@@ -159,13 +153,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw new Error('User profile not found. Please try registering again.');
       }
 
-      console.log('User data fetched:', userData);
-
       const user = await userRowToUser(userData);
-      console.log('User object created:', user);
 
       dispatch({ type: 'LOGIN_SUCCESS', payload: user });
-      console.log('Login complete!');
     } catch (error: any) {
       console.error('Login error:', error);
       dispatch({ type: 'LOGIN_ERROR', payload: error.message || 'Login failed' });
@@ -177,8 +167,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'LOGIN_START' });
 
     try {
-      console.log('Attempting registration for:', data.email);
-
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: data.email,
         password: data.password,
@@ -186,59 +174,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           data: {
             username: data.username,
             display_name: data.displayName,
-            age: data.age,
           },
         },
       });
 
       if (authError) {
-        console.error('Supabase signup error:', authError);
         throw authError;
       }
-      if (!authData.user) throw new Error('No user returned');
+      if (!authData.user) throw new Error('Registration failed');
 
-      console.log('User created:', authData.user.id);
-      console.log('User email confirmed:', authData.user.email_confirmed_at);
-      console.log('Session created:', !!authData.session);
-
-      // Check if email confirmation is required
-      if (!authData.session) {
-        console.warn('No session returned - email confirmation is required');
-        dispatch({ type: 'LOGOUT' });
-        throw new Error('Account created successfully! Please check your email and click the confirmation link to activate your account.');
-      }
-
-      // Wait a bit for the trigger to create the user record
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      // Update user with interests
-      const { error: updateError } = await supabase
-        .from('users')
-        .update({
-          interests: data.interests,
-        })
-        .eq('id', authData.user.id);
-
-      if (updateError) {
-        console.error('User update error:', updateError);
-        throw updateError;
-      }
-
-      console.log('User updated with interests');
-
-      // Fetch complete user data
       const { data: userData, error: userError } = await supabase
         .from('users')
-        .select('*')
-        .eq('id', authData.user.id)
+        .insert({
+          id: authData.user.id,
+          email: data.email,
+          username: data.username,
+          display_name: data.displayName,
+          age: data.age,
+          interests: data.interests,
+          bio: '',
+          location: '',
+          avatar: null,
+          authenticity_score: 50,
+          friends_count: 0,
+          circles_count: 0,
+        })
+        .select()
         .single();
 
       if (userError) {
         console.error('User fetch error:', userError);
         throw userError;
       }
-
-      console.log('Complete user data:', userData);
 
       const user = await userRowToUser(userData);
       dispatch({ type: 'LOGIN_SUCCESS', payload: user });

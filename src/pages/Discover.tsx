@@ -12,6 +12,7 @@ export function Discover() {
   const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [dailyMatchesUsed, setDailyMatchesUsed] = useState(0);
+  const [showFilters, setShowFilters] = useState(false);
 
   useEffect(() => {
     // Simulate API call
@@ -85,7 +86,7 @@ export function Discover() {
           {dailyMatchesUsed} connections made today
         </div>
         <div className="flex space-x-2">
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" onClick={() => setShowFilters(true)}>
             <Filter className="w-4 h-4 mr-2" />
             Filters
           </Button>

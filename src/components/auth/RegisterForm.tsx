@@ -102,14 +102,8 @@ export function RegisterForm() {
   };
 
   const onSubmit = async (data: RegisterFormData) => {
-    console.log('=== FORM SUBMISSION STARTED ===');
-    console.log('Form submitted with data:', data);
-    console.log('Selected interests:', selectedInterests);
-    console.log('Form errors:', errors);
-
     try {
       setIsLoading(true);
-      console.log('Calling registerUser...');
       await registerUser({
         email: data.email,
         password: data.password,
@@ -118,13 +112,11 @@ export function RegisterForm() {
         age: data.age,
         interests: data.interests,
       });
-      console.log('Registration successful!');
     } catch (error: any) {
       console.error('Registration form error:', error);
       setError('root', { message: error?.message || 'Registration failed. Please try again.' });
     } finally {
       setIsLoading(false);
-      console.log('=== FORM SUBMISSION ENDED ===');
     }
   };
 
@@ -177,18 +169,11 @@ export function RegisterForm() {
             </div>
 
             <form onSubmit={(e) => {
-              console.log('Form onSubmit event triggered');
-              console.log('Current step:', step);
-              console.log('Current form values:', watchedFields);
-              console.log('Selected interests:', selectedInterests);
-              console.log('Form errors before submit:', errors);
               handleSubmit(
                 (data) => {
-                  console.log('Validation passed!');
                   onSubmit(data);
                 },
                 (errors) => {
-                  console.error('Validation failed with errors:', errors);
                   Object.keys(errors).forEach(key => {
                     console.error(`  ${key}: ${errors[key]?.message}`);
                   });

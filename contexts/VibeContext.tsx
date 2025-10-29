@@ -165,7 +165,6 @@ export function VibeProvider({ children }: { children: React.ReactNode }) {
   const connectWithMatch = async (matchId: string) => {
     try {
       // Simulate API call to connect with match
-      console.log('Connecting with match:', matchId);
     } catch (error) {
       console.error('Error connecting with match:', error);
     }
