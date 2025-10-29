@@ -79,12 +79,13 @@ interface RegisterData {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Helper function to convert Supabase profile to User type
-const profileToUser = async (profile: any, authUserId: string): Promise<User> => {
+// Helper function to convert user row to User type
+const userRowToUser = async (userRow: any): Promise<User> => {
+  // Fetch user badges if they exist
   const { data: userBadges } = await supabase
     .from('user_badges')
     .select('badge_id, badges(*), earned_at')
-    .eq('user_id', authUserId);
+    .eq('user_id', userRow.id);
 
   const badges = userBadges?.map((ub: any) => ({
     id: ub.badges.id,
@@ -96,22 +97,22 @@ const profileToUser = async (profile: any, authUserId: string): Promise<User> =>
   })) || [];
 
   return {
-    id: profile.id,
-    email: profile.email || '',
-    username: profile.username,
-    displayName: profile.display_name,
-    avatar: profile.avatar,
-    vibeVideo: profile.vibe_video,
-    bio: profile.bio,
-    age: profile.age,
-    location: profile.location,
-    interests: profile.interests || [],
-    values: profile.values || [],
-    authenticityScore: profile.authenticity_score,
-    friendsCount: profile.friends_count,
-    circlesCount: profile.circles_count,
-    joinedAt: new Date(profile.created_at),
-    isOnline: profile.is_online,
+    id: userRow.id,
+    email: userRow.email || '',
+    username: userRow.username,
+    displayName: userRow.display_name,
+    avatar: userRow.avatar_url,
+    vibeVideo: undefined,
+    bio: userRow.bio || '',
+    age: userRow.age,
+    location: userRow.location || '',
+    interests: userRow.interests || [],
+    values: userRow.values || [],
+    authenticityScore: userRow.authenticity_score || 75,
+    friendsCount: userRow.friends_count || 0,
+    circlesCount: userRow.circles_count || 0,
+    joinedAt: new Date(userRow.created_at),
+    isOnline: userRow.is_online || false,
     badges,
   };
 };
@@ -141,26 +142,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       console.log('User authenticated:', authData.user.id);
 
-      // Fetch user profile
-      console.log('Fetching profile for user:', authData.user.id);
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
+      // Fetch user data from public.users
+      console.log('Fetching user from public.users:', authData.user.id);
+      const { data: userData, error: userError } = await supabase
+        .from('users')
         .select('*')
         .eq('id', authData.user.id)
         .single();
 
-      if (profileError) {
-        console.error('Profile fetch error:', profileError);
-        throw profileError;
+      if (userError) {
+        console.error('User fetch error:', userError);
+        throw userError;
       }
 
-      console.log('Profile fetched:', profile);
+      if (!userData) {
+        throw new Error('User profile not found. Please try registering again.');
+      }
 
-      console.log('Converting profile to user object...');
-      const user = await profileToUser({ ...profile, email: authData.user.email }, authData.user.id);
+      console.log('User data fetched:', userData);
+
+      const user = await userRowToUser(userData);
       console.log('User object created:', user);
 
-      console.log('Dispatching LOGIN_SUCCESS...');
       dispatch({ type: 'LOGIN_SUCCESS', payload: user });
       console.log('Login complete!');
     } catch (error: any) {
@@ -205,39 +208,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw new Error('Account created successfully! Please check your email and click the confirmation link to activate your account.');
       }
 
-      // Wait a bit for the trigger to create the profile
+      // Wait a bit for the trigger to create the user record
       await new Promise(resolve => setTimeout(resolve, 1000));
 
-      // Update profile with interests
+      // Update user with interests
       const { error: updateError } = await supabase
-        .from('profiles')
+        .from('users')
         .update({
           interests: data.interests,
         })
         .eq('id', authData.user.id);
 
       if (updateError) {
-        console.error('Profile update error:', updateError);
+        console.error('User update error:', updateError);
         throw updateError;
       }
 
-      console.log('Profile updated with interests');
+      console.log('User updated with interests');
 
-      // Fetch complete profile
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
+      // Fetch complete user data
+      const { data: userData, error: userError } = await supabase
+        .from('users')
         .select('*')
         .eq('id', authData.user.id)
         .single();
 
-      if (profileError) {
-        console.error('Profile fetch error:', profileError);
-        throw profileError;
+      if (userError) {
+        console.error('User fetch error:', userError);
+        throw userError;
       }
 
-      console.log('Complete profile:', profile);
+      console.log('Complete user data:', userData);
 
-      const user = await profileToUser({ ...profile, email: authData.user.email }, authData.user.id);
+      const user = await userRowToUser(userData);
       dispatch({ type: 'LOGIN_SUCCESS', payload: user });
     } catch (error: any) {
       console.error('Registration error:', error);
@@ -262,14 +265,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const { data: { session } } = await supabase.auth.getSession();
 
         if (session?.user) {
-          const { data: profile } = await supabase
-            .from('profiles')
+          const { data: userData } = await supabase
+            .from('users')
             .select('*')
             .eq('id', session.user.id)
             .single();
 
-          if (profile) {
-            const user = await profileToUser({ ...profile, email: session.user.email }, session.user.id);
+          if (userData) {
+            const user = await userRowToUser(userData);
             dispatch({ type: 'LOGIN_SUCCESS', payload: user });
           } else {
             dispatch({ type: 'LOGOUT' });
@@ -278,6 +281,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           dispatch({ type: 'LOGOUT' });
         }
       } catch (error) {
+        console.error('Auth initialization error:', error);
         dispatch({ type: 'LOGOUT' });
       }
     };
@@ -287,14 +291,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_IN' && session?.user) {
-        const { data: profile } = await supabase
-          .from('profiles')
+        const { data: userData } = await supabase
+          .from('users')
           .select('*')
           .eq('id', session.user.id)
           .single();
 
-        if (profile) {
-          const user = await profileToUser({ ...profile, email: session.user.email }, session.user.id);
+        if (userData) {
+          const user = await userRowToUser(userData);
           dispatch({ type: 'LOGIN_SUCCESS', payload: user });
         }
       } else if (event === 'SIGNED_OUT') {

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useForm } from 'react-hook-form';
@@ -7,7 +7,6 @@ import { z } from 'zod';
 import { Eye, EyeOff, ArrowLeft, ArrowRight, Check } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
-import { Badge } from '../ui/Badge';
 import { useAuth } from '../../contexts/AuthContext';
 
 const registerSchema = z.object({
@@ -23,10 +22,9 @@ const registerSchema = z.object({
     .max(20, 'Username must be less than 20 characters')
     .regex(/^[a-zA-Z0-9_]+$/, 'Username can only contain letters, numbers, and underscores'),
   displayName: z.string().min(1, 'Display name is required').min(2, 'Display name must be at least 2 characters'),
-  age: z.number({
-    required_error: "Age is required",
-    invalid_type_error: "Age must be a number",
-  }).min(13, 'You must be at least 13 years old').max(120, 'Please enter a valid age'),
+  age: z.coerce.number()
+    .min(13, 'You must be at least 13 years old')
+    .max(120, 'Please enter a valid age'),
   interests: z.array(z.string()).min(3, 'Please select at least 3 interests'),
   agreeTerms: z.boolean().refine(val => val === true, 'You must agree to the terms'),
 }).refine(data => data.password === data.confirmPassword, {

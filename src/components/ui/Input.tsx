@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { forwardRef } from 'react';
 
 interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string;
@@ -6,8 +6,22 @@ interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   helperText?: string;
 }
 
-export const Input = React.forwardRef<HTMLInputElement, InputProps>(
-  ({ label, error, helperText, className = '', ...props }, ref) => {
+export const Input = forwardRef<HTMLInputElement, InputProps>(
+  (
+    {
+      label,
+      error,
+      helperText,
+      className = '',
+      ...props
+    },
+    ref
+  ) => {
+    // Filter out undefined values that might come from react-hook-form
+    const filteredProps = Object.fromEntries(
+      Object.entries(props).filter(([, value]) => value !== undefined)
+    );
+
     const inputClasses = `
       w-full px-3 py-2 border rounded-lg text-sm
       focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent
@@ -29,7 +43,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
         <input
           ref={ref}
           className={inputClasses}
-          {...props}
+          {...(filteredProps as React.InputHTMLAttributes<HTMLInputElement>)}
         />
         {error && (
           <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
