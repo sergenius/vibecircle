@@ -1,20 +1,42 @@
+import 'react-native-gesture-handler';
+import React from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { RootNavigator } from '@/navigation/RootNavigator';
+import {
+  AuthProvider,
+  UserProvider,
+  VibeProvider,
+  MatchProvider,
+  CircleProvider,
+  ChatProvider,
+  NotificationProvider,
+} from '@/contexts';
 
-export default function App() {
+const App: React.FC = () => {
   return (
-    <View style={styles.container}>
-      <Text>Open up App.tsx to start working on your app!</Text>
-      <StatusBar style="auto" />
-    </View>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        <AuthProvider>
+          <UserProvider>
+            <VibeProvider>
+              <MatchProvider>
+                <CircleProvider>
+                  <ChatProvider>
+                    <NotificationProvider>
+                      <StatusBar style="dark" />
+                      <RootNavigator />
+                    </NotificationProvider>
+                  </ChatProvider>
+                </CircleProvider>
+              </MatchProvider>
+            </VibeProvider>
+          </UserProvider>
+        </AuthProvider>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
-}
+};
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
+export default App;

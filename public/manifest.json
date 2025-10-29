@@ -1,0 +1,102 @@
+{
+  "name": "VibeCircle - Authentic Friendship Discovery",
+  "short_name": "VibeCircle",
+  "description": "A video-based social platform for authentic friendship discovery where users share short video introductions and connect with like-minded people.",
+  "start_url": "/",
+  "display": "standalone",
+  "theme_color": "#14B8A6",
+  "background_color": "#FFFFFF",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "/icons/icon-72x72.png",
+      "sizes": "72x72",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/icons/icon-96x96.png",
+      "sizes": "96x96",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/icons/icon-128x128.png",
+      "sizes": "128x128",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/icons/icon-144x144.png",
+      "sizes": "144x144",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/icons/icon-152x152.png",
+      "sizes": "152x152",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/icons/icon-384x384.png",
+      "sizes": "384x384",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Create Vibe",
+      "short_name": "Create",
+      "description": "Share a new video vibe",
+      "url": "/create-vibe",
+      "icons": [
+        {
+          "src": "/icons/shortcut-create.png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "Discover Friends",
+      "short_name": "Discover",
+      "description": "Find new friends with AI matching",
+      "url": "/discover",
+      "icons": [
+        {
+          "src": "/icons/shortcut-discover.png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "My Circles",
+      "short_name": "Circles",
+      "description": "Browse your communities",
+      "url": "/circles",
+      "icons": [
+        {
+          "src": "/icons/shortcut-circles.png",
+          "sizes": "96x96"
+        }
+      ]
+    }
+  ],
+  "categories": ["social", "lifestyle", "entertainment"],
+  "lang": "en",
+  "dir": "ltr"
+}
