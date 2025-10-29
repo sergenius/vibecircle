@@ -23,7 +23,10 @@ const registerSchema = z.object({
     .max(20, 'Username must be less than 20 characters')
     .regex(/^[a-zA-Z0-9_]+$/, 'Username can only contain letters, numbers, and underscores'),
   displayName: z.string().min(1, 'Display name is required').min(2, 'Display name must be at least 2 characters'),
-  age: z.coerce.number().min(13, 'You must be at least 13 years old').max(120, 'Please enter a valid age'),
+  age: z.number({
+    required_error: "Age is required",
+    invalid_type_error: "Age must be a number",
+  }).min(13, 'You must be at least 13 years old').max(120, 'Please enter a valid age'),
   interests: z.array(z.string()).min(3, 'Please select at least 3 interests'),
   agreeTerms: z.boolean().refine(val => val === true, 'You must agree to the terms'),
 }).refine(data => data.password === data.confirmPassword, {
@@ -63,7 +66,6 @@ export function RegisterForm() {
       confirmPassword: '',
       username: '',
       displayName: '',
-      age: undefined,
       interests: [],
       agreeTerms: false,
     },
@@ -262,7 +264,10 @@ export function RegisterForm() {
                   />
 
                   <Input
-                    {...register('age', { valueAsNumber: true })}
+                    {...register('age', {
+                      valueAsNumber: true,
+                      setValueAs: v => v === '' ? undefined : Number(v)
+                    })}
                     type="number"
                     label="Age"
                     placeholder="Your age"
