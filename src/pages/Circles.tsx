@@ -29,6 +29,8 @@ export function Circles() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [joinedCircles, setJoinedCircles] = useState<string[]>(['1', '2']);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
 
   useEffect(() => {
     // Simulate API call
@@ -89,7 +91,7 @@ export function Circles() {
             Join communities that match your interests and values
           </p>
         </div>
-        <Button variant="primary">
+        <Button variant="primary" onClick={() => setIsCreateModalOpen(true)}>
           <Plus className="w-4 h-4 mr-2" />
           Create Circle
         </Button>
@@ -110,7 +112,7 @@ export function Circles() {
               />
             </div>
           </div>
-          <Button variant="outline">
+          <Button variant="outline" onClick={() => setShowFilters(true)}>
             <Filter className="w-4 h-4 mr-2" />
             More Filters
           </Button>

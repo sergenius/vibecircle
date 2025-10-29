@@ -109,8 +109,6 @@ export function Safety() {
   ];
 
   const handleReportSubmit = () => {
-    // Handle report submission
-    console.log('Report submitted:', { reportType, reportDetails });
     setIsReportModalOpen(false);
     setReportType('');
     setReportDetails('');

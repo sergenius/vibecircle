@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { NotificationProvider } from './contexts/NotificationContext';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { Layout } from './components/layout/Layout';
 
 // Pages
@@ -23,8 +24,17 @@ import { Help } from './pages/Help';
 import { LoginForm } from './components/auth/LoginForm';
 import { RegisterForm } from './components/auth/RegisterForm';
 
+// Development flag: Set to true to bypass auth for UI testing
+// Should ALWAYS be false in production
+const BYPASS_AUTH = import.meta.env.MODE === 'development' && false;
+
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
+
+  // Allow bypass in dev mode when flag is true
+  if (BYPASS_AUTH) {
+    return <>{children}</>;
+  }
 
   if (isLoading) {
     return (
@@ -94,15 +104,17 @@ function AppRoutes() {
 
 function App() {
   return (
-    <ThemeProvider>
-      <AuthProvider>
-        <NotificationProvider>
-          <Router basename="/vibecircle">
-            <AppRoutes />
-          </Router>
-        </NotificationProvider>
-      </AuthProvider>
-    </ThemeProvider>
+    <ErrorBoundary>
+      <ThemeProvider>
+        <AuthProvider>
+          <NotificationProvider>
+            <Router basename="/vibecircle">
+              <AppRoutes />
+            </Router>
+          </NotificationProvider>
+        </AuthProvider>
+      </ThemeProvider>
+    </ErrorBoundary>
   );
 }
 
