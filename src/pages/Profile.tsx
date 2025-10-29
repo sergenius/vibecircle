@@ -9,23 +9,114 @@ import { Modal } from '../components/ui/Modal';
 import { Input } from '../components/ui/Input';
 import { useAuth } from '../contexts/AuthContext';
 import { mockVibes } from '../data/mockData';
+import { useNotifications } from '../contexts/NotificationContext';
+import { Copy, QrCode } from 'lucide-react';
+
+interface EditFormData {
+  displayName: string;
+  bio: string;
+  location: string;
+  interests: string[];
+  values: string[];
+}
 
 export function Profile() {
   const { user, updateUser } = useAuth();
+  const { addNotification } = useNotifications();
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'vibes' | 'about' | 'badges'>('vibes');
-  const [editForm, setEditForm] = useState({
+  const [newInterest, setNewInterest] = useState('');
+  const [newValue, setNewValue] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+
+  const [editForm, setEditForm] = useState<EditFormData>({
     displayName: user?.displayName || '',
     bio: user?.bio || '',
     location: user?.location || '',
     interests: user?.interests || [],
+    values: user?.values || [],
   });
 
   const userVibes = mockVibes.filter(vibe => vibe.userId === user?.id);
 
-  const handleSaveProfile = () => {
-    updateUser(editForm);
-    setIsEditModalOpen(false);
+  const handleSaveProfile = async () => {
+    if (!editForm.displayName.trim()) {
+      addNotification({
+        userId: user!.id,
+        type: 'like',
+        message: 'Please enter a display name',
+        isRead: false,
+      });
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      updateUser(editForm);
+      addNotification({
+        userId: user!.id,
+        type: 'like',
+        message: 'Profile updated successfully!',
+        isRead: false,
+      });
+      setIsEditModalOpen(false);
+    } catch (error) {
+      addNotification({
+        userId: user!.id,
+        type: 'like',
+        message: 'Failed to update profile',
+        isRead: false,
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const addInterest = () => {
+    if (newInterest.trim() && !editForm.interests.includes(newInterest.trim())) {
+      setEditForm(prev => ({
+        ...prev,
+        interests: [...prev.interests, newInterest.trim()],
+      }));
+      setNewInterest('');
+    }
+  };
+
+  const removeInterest = (interest: string) => {
+    setEditForm(prev => ({
+      ...prev,
+      interests: prev.interests.filter(i => i !== interest),
+    }));
+  };
+
+  const addValue = () => {
+    if (newValue.trim() && !editForm.values.includes(newValue.trim())) {
+      setEditForm(prev => ({
+        ...prev,
+        values: [...prev.values, newValue.trim()],
+      }));
+      setNewValue('');
+    }
+  };
+
+  const removeValue = (value: string) => {
+    setEditForm(prev => ({
+      ...prev,
+      values: prev.values.filter(v => v !== value),
+    }));
+  };
+
+  const handleShareProfile = () => {
+    const profileLink = `${window.location.origin}/vibecircle/profile/${user?.id}`;
+    navigator.clipboard.writeText(profileLink);
+    addNotification({
+      userId: user!.id,
+      type: 'like',
+      message: 'Profile link copied to clipboard!',
+      isRead: false,
+    });
   };
 
   const stats = [
@@ -102,7 +193,7 @@ export function Profile() {
             </div>
 
             <div className="flex space-x-3 mt-4 sm:mt-0">
-              <Button variant="outline" size="sm">
+              <Button variant="outline" size="sm" onClick={() => setIsShareModalOpen(true)}>
                 <Share2 className="w-4 h-4 mr-2" />
                 Share
               </Button>
@@ -346,12 +437,21 @@ export function Profile() {
         title="Edit Profile"
         maxWidth="lg"
       >
-        <div className="space-y-4">
-          <Input
-            label="Display Name"
-            value={editForm.displayName}
-            onChange={(e) => setEditForm({ ...editForm, displayName: e.target.value })}
-          />
+        <div className="space-y-6">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Display Name *
+            </label>
+            <Input
+              type="text"
+              value={editForm.displayName}
+              onChange={(e) => setEditForm({ ...editForm, displayName: e.target.value })}
+              maxLength={50}
+            />
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              {editForm.displayName.length}/50 characters
+            </p>
+          </div>
           
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -361,24 +461,159 @@ export function Profile() {
               rows={3}
               value={editForm.bio}
               onChange={(e) => setEditForm({ ...editForm, bio: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 dark:bg-gray-800 dark:text-gray-100"
+              maxLength={160}
               placeholder="Tell people about yourself..."
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 dark:bg-gray-800 dark:text-gray-100"
             />
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              {editForm.bio.length}/160 characters
+            </p>
           </div>
           
-          <Input
-            label="Location"
-            value={editForm.location}
-            onChange={(e) => setEditForm({ ...editForm, location: e.target.value })}
-            placeholder="City, Country"
-          />
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Location
+            </label>
+            <Input
+              type="text"
+              value={editForm.location}
+              onChange={(e) => setEditForm({ ...editForm, location: e.target.value })}
+              placeholder="City, Country"
+            />
+          </div>
 
-          <div className="flex justify-end space-x-3 mt-6">
+          {/* Interests */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Interests
+            </label>
+            <div className="flex gap-2 mb-2">
+              <Input
+                type="text"
+                value={newInterest}
+                onChange={(e) => setNewInterest(e.target.value)}
+                placeholder="Add an interest"
+                onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addInterest())}
+              />
+              <Button type="button" onClick={addInterest} variant="outline" size="sm">
+                Add
+              </Button>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {editForm.interests.map((interest) => (
+                <Badge
+                  key={interest}
+                  variant="primary"
+                  className="cursor-pointer"
+                  onClick={() => removeInterest(interest)}
+                >
+                  {interest} ×
+                </Badge>
+              ))}
+            </div>
+          </div>
+
+          {/* Values */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Values
+            </label>
+            <div className="flex gap-2 mb-2">
+              <Input
+                type="text"
+                value={newValue}
+                onChange={(e) => setNewValue(e.target.value)}
+                placeholder="Add a value"
+                onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addValue())}
+              />
+              <Button type="button" onClick={addValue} variant="outline" size="sm">
+                Add
+              </Button>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {editForm.values.map((value) => (
+                <Badge
+                  key={value}
+                  variant="secondary"
+                  className="cursor-pointer"
+                  onClick={() => removeValue(value)}
+                >
+                  {value} ×
+                </Badge>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200 dark:border-gray-700">
             <Button variant="outline" onClick={() => setIsEditModalOpen(false)}>
               Cancel
             </Button>
-            <Button variant="primary" onClick={handleSaveProfile}>
+            <Button 
+              variant="primary" 
+              onClick={handleSaveProfile}
+              isLoading={isSaving}
+            >
               Save Changes
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Share Profile Modal */}
+      <Modal
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
+        title="Share Your Profile"
+        maxWidth="md"
+      >
+        <div className="space-y-6">
+          <p className="text-gray-600 dark:text-gray-400">
+            Share your profile with friends and let them connect with you!
+          </p>
+
+          {/* Profile Link */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Your Profile Link
+            </label>
+            <div className="flex gap-2">
+              <Input
+                type="text"
+                value={`${window.location.origin}/vibecircle/profile/${user?.id}`}
+                readOnly
+                className="flex-1"
+              />
+              <Button variant="outline" onClick={handleShareProfile}>
+                <Copy className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+
+          {/* QR Code */}
+          <div className="bg-gray-50 dark:bg-gray-700 p-6 rounded-lg text-center">
+            <QrCode className="w-12 h-12 text-teal-500 mx-auto mb-3" />
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Scan QR code to share your profile
+            </p>
+          </div>
+
+          {/* Social Sharing */}
+          <div>
+            <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+              Share on Social Media
+            </p>
+            <div className="grid grid-cols-3 gap-2">
+              {['Twitter', 'Facebook', 'LinkedIn'].map((platform) => (
+                <Button key={platform} variant="outline" size="sm" className="w-full">
+                  {platform}
+                </Button>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+            <Button variant="outline" onClick={() => setIsShareModalOpen(false)}>
+              Close
             </Button>
           </div>
         </div>
