@@ -132,6 +132,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (authError) {
         console.error('Supabase auth error:', authError);
+        if (authError.message.includes('Email not confirmed')) {
+          throw new Error('Please confirm your email address before logging in. Check your inbox for the confirmation link.');
+        }
         throw authError;
       }
       if (!authData.user) throw new Error('No user returned');
@@ -139,6 +142,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.log('User authenticated:', authData.user.id);
 
       // Fetch user profile
+      console.log('Fetching profile for user:', authData.user.id);
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('*')
@@ -152,8 +156,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       console.log('Profile fetched:', profile);
 
+      console.log('Converting profile to user object...');
       const user = await profileToUser({ ...profile, email: authData.user.email }, authData.user.id);
+      console.log('User object created:', user);
+
+      console.log('Dispatching LOGIN_SUCCESS...');
       dispatch({ type: 'LOGIN_SUCCESS', payload: user });
+      console.log('Login complete!');
     } catch (error: any) {
       console.error('Login error:', error);
       dispatch({ type: 'LOGIN_ERROR', payload: error.message || 'Login failed' });
@@ -186,6 +195,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!authData.user) throw new Error('No user returned');
 
       console.log('User created:', authData.user.id);
+      console.log('User email confirmed:', authData.user.email_confirmed_at);
+      console.log('Session created:', !!authData.session);
+
+      // Check if email confirmation is required
+      if (!authData.session) {
+        console.warn('No session returned - email confirmation is required');
+        dispatch({ type: 'LOGOUT' });
+        throw new Error('Account created successfully! Please check your email and click the confirmation link to activate your account.');
+      }
 
       // Wait a bit for the trigger to create the profile
       await new Promise(resolve => setTimeout(resolve, 1000));
