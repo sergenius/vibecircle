@@ -11,6 +11,9 @@ import {
   Star,
   Clock,
   MoreHorizontal,
+  AlertTriangle,
+  Copy,
+  BlockIcon,
 } from 'lucide-react';
 import { Avatar } from '../components/ui/Avatar';
 import { Badge } from '../components/ui/Badge';
@@ -18,15 +21,40 @@ import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { LoadingSpinner } from '../components/ui/LoadingSpinner';
 import { ChatBox } from '../components/chat/ChatBox';
+import { Modal } from '../components/ui/Modal';
 import { mockUsers } from '../data/mockData';
 import { User, Connection, Message } from '../types';
+import { useNotifications } from '../contexts/NotificationContext';
+
+interface ScheduleData {
+  date: string;
+  time: string;
+  title: string;
+}
+
+interface ActiveCall {
+  connectionId: string;
+  type: 'phone' | 'video';
+  isInitiated: boolean;
+}
 
 export function Connections() {
+  const { addNotification } = useNotifications();
   const [connections, setConnections] = useState<Connection[]>([]);
   const [selectedConnection, setSelectedConnection] = useState<Connection | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<'friends' | 'pending' | 'requests'>('friends');
+  const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
+  const [isCallModalOpen, setIsCallModalOpen] = useState(false);
+  const [isOptionsMenuOpen, setIsOptionsMenuOpen] = useState(false);
+  const [activeCall, setActiveCall] = useState<ActiveCall | null>(null);
+  const [callDuration, setCallDuration] = useState(0);
+  const [scheduleForm, setScheduleForm] = useState<ScheduleData>({
+    date: '',
+    time: '',
+    title: 'Hangout',
+  });
 
   // Mock connections data
   useEffect(() => {
@@ -70,6 +98,17 @@ export function Connections() {
     loadConnections();
   }, []);
 
+  // Call timer effect
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (activeCall) {
+      interval = setInterval(() => {
+        setCallDuration(prev => prev + 1);
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [activeCall]);
+
   const acceptConnection = (connectionId: string) => {
     setConnections(prev => 
       prev.map(conn => 
@@ -78,6 +117,106 @@ export function Connections() {
           : conn
       )
     );
+    addNotification({
+      userId: '1',
+      type: 'friend_request',
+      message: 'Connection request accepted!',
+      isRead: false,
+    });
+  };
+
+  const handleInitiateCall = (type: 'phone' | 'video') => {
+    if (!selectedConnection) return;
+    
+    setActiveCall({
+      connectionId: selectedConnection.id,
+      type,
+      isInitiated: true,
+    });
+    setIsCallModalOpen(true);
+    setCallDuration(0);
+
+    addNotification({
+      userId: '1',
+      type: 'like',
+      message: `${type === 'video' ? 'Video' : 'Phone'} call initiated with ${selectedConnection.friend.displayName}...`,
+      isRead: false,
+    });
+  };
+
+  const handleEndCall = () => {
+    if (activeCall && callDuration > 0) {
+      addNotification({
+        userId: '1',
+        type: 'like',
+        message: `${activeCall.type === 'video' ? 'Video' : 'Phone'} call ended. Duration: ${formatDuration(callDuration)}`,
+        isRead: false,
+      });
+    }
+    setActiveCall(null);
+    setIsCallModalOpen(false);
+    setCallDuration(0);
+  };
+
+  const formatDuration = (seconds: number) => {
+    const hrs = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    
+    if (hrs > 0) return `${hrs}h ${mins}m`;
+    if (mins > 0) return `${mins}m ${secs}s`;
+    return `${secs}s`;
+  };
+
+  const handleScheduleHangout = async () => {
+    if (!scheduleForm.date || !scheduleForm.time || !selectedConnection) return;
+
+    const [year, month, day] = scheduleForm.date.split('-');
+    const scheduledDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+
+    addNotification({
+      userId: '1',
+      type: 'like',
+      message: `Hangout scheduled with ${selectedConnection.friend.displayName} for ${scheduleForm.date} at ${scheduleForm.time}!`,
+      isRead: false,
+    });
+
+    setIsScheduleModalOpen(false);
+    setScheduleForm({
+      date: '',
+      time: '',
+      title: 'Hangout',
+    });
+  };
+
+  const handleBlockUser = () => {
+    if (!selectedConnection) return;
+    
+    addNotification({
+      userId: '1',
+      type: 'like',
+      message: `${selectedConnection.friend.displayName} has been blocked.`,
+      isRead: false,
+    });
+
+    setConnections(prev => prev.filter(c => c.id !== selectedConnection.id));
+    setSelectedConnection(null);
+    setIsOptionsMenuOpen(false);
+  };
+
+  const handleShareProfile = () => {
+    if (!selectedConnection) return;
+    
+    const profileLink = `${window.location.origin}/vibecircle/profile/${selectedConnection.friend.id}`;
+    navigator.clipboard.writeText(profileLink);
+
+    addNotification({
+      userId: '1',
+      type: 'like',
+      message: 'Profile link copied to clipboard!',
+      isRead: false,
+    });
+    setIsOptionsMenuOpen(false);
   };
 
   const filteredConnections = connections.filter(conn => {
@@ -255,18 +394,80 @@ export function Connections() {
                   </div>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <Button variant="ghost" size="sm">
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={() => handleInitiateCall('phone')}
+                    title="Phone Call"
+                  >
                     <Phone className="w-4 h-4" />
                   </Button>
-                  <Button variant="ghost" size="sm">
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={() => handleInitiateCall('video')}
+                    title="Video Call"
+                  >
                     <Video className="w-4 h-4" />
                   </Button>
-                  <Button variant="ghost" size="sm">
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={() => setIsScheduleModalOpen(true)}
+                    title="Schedule Hangout"
+                  >
                     <Calendar className="w-4 h-4" />
                   </Button>
-                  <Button variant="ghost" size="sm">
-                    <MoreHorizontal className="w-4 h-4" />
-                  </Button>
+                  <div className="relative">
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={() => setIsOptionsMenuOpen(!isOptionsMenuOpen)}
+                      title="More Options"
+                    >
+                      <MoreHorizontal className="w-4 h-4" />
+                    </Button>
+
+                    {/* Options Menu */}
+                    {isOptionsMenuOpen && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="absolute right-0 top-full mt-1 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50"
+                      >
+                        <div className="py-1">
+                          <button
+                            onClick={() => {
+                              handleShareProfile();
+                            }}
+                            className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center space-x-2"
+                          >
+                            <Copy className="w-4 h-4" />
+                            <span>Share Profile</span>
+                          </button>
+                          <button
+                            onClick={() => {
+                              setIsOptionsMenuOpen(false);
+                              // View profile logic
+                            }}
+                            className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                          >
+                            View Full Profile
+                          </button>
+                          <hr className="my-1 border-gray-200 dark:border-gray-700" />
+                          <button
+                            onClick={() => {
+                              handleBlockUser();
+                            }}
+                            className="w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center space-x-2"
+                          >
+                            <BlockIcon className="w-4 h-4" />
+                            <span>Block User</span>
+                          </button>
+                        </div>
+                      </motion.div>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -294,6 +495,146 @@ export function Connections() {
           </div>
         )}
       </div>
+
+      {/* Call Modal */}
+      <Modal
+        isOpen={isCallModalOpen && activeCall !== null}
+        onClose={handleEndCall}
+        title={`${activeCall?.type === 'video' ? 'Video' : 'Phone'} Call`}
+        maxWidth="md"
+      >
+        <div className="space-y-6">
+          {/* Call Status */}
+          <div className="text-center space-y-4">
+            <Avatar
+              src={selectedConnection?.friend.avatar}
+              alt={selectedConnection?.friend.displayName}
+              size="xl"
+              className="mx-auto"
+            />
+            <div>
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+                {selectedConnection?.friend.displayName}
+              </h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                {activeCall?.isInitiated ? 'Calling...' : 'Connected'}
+              </p>
+            </div>
+
+            {/* Call Duration */}
+            <div className="text-2xl font-bold text-teal-600 dark:text-teal-400">
+              {formatDuration(callDuration)}
+            </div>
+          </div>
+
+          {/* Call Visualization */}
+          <div className="bg-gradient-to-br from-teal-500 to-orange-500 rounded-lg p-8 text-white text-center">
+            {activeCall?.type === 'video' ? (
+              <div className="space-y-4">
+                <div className="text-4xl">📹</div>
+                <p>Video call in progress...</p>
+                <p className="text-sm opacity-90">Your camera and microphone are active</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="text-4xl">📱</div>
+                <p>Phone call in progress...</p>
+                <p className="text-sm opacity-90">Your microphone is active</p>
+              </div>
+            )}
+          </div>
+
+          {/* Call Controls */}
+          <div className="flex justify-center space-x-4">
+            <Button 
+              variant="outline"
+              size="lg"
+              className="rounded-full w-16 h-16 flex items-center justify-center"
+              title="Mute"
+            >
+              🔇
+            </Button>
+            <Button 
+              variant="danger"
+              size="lg"
+              className="rounded-full w-16 h-16 flex items-center justify-center"
+              onClick={handleEndCall}
+              title="End Call"
+            >
+              ✕
+            </Button>
+            {activeCall?.type === 'video' && (
+              <Button 
+                variant="outline"
+                size="lg"
+                className="rounded-full w-16 h-16 flex items-center justify-center"
+                title="End Video"
+              >
+                📹
+              </Button>
+            )}
+          </div>
+
+          <p className="text-center text-xs text-gray-500 dark:text-gray-400">
+            Click the red button to end the call
+          </p>
+        </div>
+      </Modal>
+
+      {/* Schedule Hangout Modal */}
+      <Modal
+        isOpen={isScheduleModalOpen}
+        onClose={() => setIsScheduleModalOpen(false)}
+        title="Schedule Hangout"
+        maxWidth="md"
+      >
+        <form className="space-y-6">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Hangout Title
+            </label>
+            <Input
+              type="text"
+              placeholder="Coffee meetup"
+              value={scheduleForm.title}
+              onChange={(e) => setScheduleForm({ ...scheduleForm, title: e.target.value })}
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Date *
+              </label>
+              <Input
+                type="date"
+                value={scheduleForm.date}
+                onChange={(e) => setScheduleForm({ ...scheduleForm, date: e.target.value })}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Time *
+              </label>
+              <Input
+                type="time"
+                value={scheduleForm.time}
+                onChange={(e) => setScheduleForm({ ...scheduleForm, time: e.target.value })}
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+            <Button variant="outline" onClick={() => setIsScheduleModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="primary" onClick={handleScheduleHangout}>
+              Schedule Hangout
+            </Button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

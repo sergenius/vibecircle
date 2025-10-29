@@ -12,6 +12,7 @@ import {
   Video,
   CheckCircle,
   X,
+  Sliders,
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
@@ -21,14 +22,54 @@ import { LoadingSpinner } from '../components/ui/LoadingSpinner';
 import { Modal } from '../components/ui/Modal';
 import { mockEvents, mockUsers } from '../data/mockData';
 import { Event } from '../types';
+import { useAuth } from '../contexts/AuthContext';
+import { useNotifications } from '../contexts/NotificationContext';
+
+interface CreateEventFormData {
+  title: string;
+  description: string;
+  date: string;
+  time: string;
+  location: string;
+  isVirtual: boolean;
+  maxAttendees: number;
+  category: string;
+}
+
+interface EventFilters {
+  sortBy: 'upcoming' | 'popular' | 'nearby';
+  eventType: 'all' | 'virtual' | 'inperson';
+  dateRange: 'week' | 'month' | 'all';
+}
 
 export function Events() {
+  const { user } = useAuth();
+  const { addNotification } = useNotifications();
   const [events, setEvents] = useState<Event[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [filter, setFilter] = useState<'all' | 'attending' | 'hosting' | 'upcoming'>('upcoming');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isFiltersModalOpen, setIsFiltersModalOpen] = useState(false);
   const [attendingEvents, setAttendingEvents] = useState<string[]>(['1', '2']);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const [createForm, setCreateForm] = useState<CreateEventFormData>({
+    title: '',
+    description: '',
+    date: '',
+    time: '',
+    location: '',
+    isVirtual: false,
+    maxAttendees: 50,
+    category: 'Social',
+  });
+
+  const [filters, setFilters] = useState<EventFilters>({
+    sortBy: 'upcoming',
+    eventType: 'all',
+    dateRange: 'month',
+  });
 
   useEffect(() => {
     const loadEvents = async () => {
@@ -55,16 +96,28 @@ export function Events() {
     const now = new Date();
     const isUpcoming = event.date > now;
     
+    let matchesFilter = true;
     switch (filter) {
       case 'upcoming':
-        return isUpcoming && matchesSearch;
+        matchesFilter = isUpcoming && matchesSearch;
+        break;
       case 'attending':
-        return attendingEvents.includes(event.id) && matchesSearch;
+        matchesFilter = attendingEvents.includes(event.id) && matchesSearch;
+        break;
       case 'hosting':
-        return event.organizerId === '1' && matchesSearch;
+        matchesFilter = event.organizerId === user?.id && matchesSearch;
+        break;
       default:
-        return matchesSearch;
+        matchesFilter = matchesSearch;
     }
+
+    // Apply advanced filters
+    if (matchesFilter) {
+      if (filters.eventType === 'virtual' && !event.isVirtual) matchesFilter = false;
+      if (filters.eventType === 'inperson' && event.isVirtual) matchesFilter = false;
+    }
+
+    return matchesFilter;
   });
 
   const formatDate = (date: Date) => {
@@ -80,6 +133,70 @@ export function Events() {
       hour: 'numeric',
       minute: '2-digit',
     });
+  };
+
+  const handleCreateEvent = async () => {
+    if (!createForm.title.trim() || !createForm.description.trim() || !createForm.date || !createForm.time) {
+      addNotification({
+        userId: user!.id,
+        type: 'like',
+        message: 'Please fill in all required fields',
+        isRead: false,
+      });
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await new Promise(resolve => setTimeout(resolve, 1500));
+
+      const [year, month, day] = createForm.date.split('-');
+      const [hours, minutes] = createForm.time.split(':');
+      const eventDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day), parseInt(hours), parseInt(minutes));
+
+      const newEvent: Event = {
+        id: (Math.random() * 1000).toString(),
+        title: createForm.title,
+        description: createForm.description,
+        date: eventDate,
+        location: createForm.location || (createForm.isVirtual ? 'Online' : 'TBD'),
+        isVirtual: createForm.isVirtual,
+        organizerId: user!.id,
+        attendees: [{ id: user!.id, username: user!.username }],
+        maxAttendees: createForm.maxAttendees,
+      };
+
+      setEvents(prev => [newEvent, ...prev]);
+      setAttendingEvents(prev => [...prev, newEvent.id]);
+
+      addNotification({
+        userId: user!.id,
+        type: 'like',
+        message: `Event "${createForm.title}" created successfully!`,
+        isRead: false,
+      });
+
+      setIsCreateModalOpen(false);
+      setCreateForm({
+        title: '',
+        description: '',
+        date: '',
+        time: '',
+        location: '',
+        isVirtual: false,
+        maxAttendees: 50,
+        category: 'Social',
+      });
+    } catch (error) {
+      addNotification({
+        userId: user!.id,
+        type: 'like',
+        message: 'Failed to create event. Please try again.',
+        isRead: false,
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (isLoading) {
@@ -123,8 +240,8 @@ export function Events() {
               />
             </div>
           </div>
-          <Button variant="outline">
-            <Filter className="w-4 h-4 mr-2" />
+          <Button variant="outline" onClick={() => setIsFiltersModalOpen(true)}>
+            <Sliders className="w-4 h-4 mr-2" />
             More Filters
           </Button>
         </div>
@@ -134,7 +251,7 @@ export function Events() {
           {[
             { key: 'upcoming', label: 'Upcoming', count: events.filter(e => e.date > new Date()).length },
             { key: 'attending', label: 'Attending', count: attendingEvents.length },
-            { key: 'hosting', label: 'Hosting', count: events.filter(e => e.organizerId === '1').length },
+            { key: 'hosting', label: 'Hosting', count: events.filter(e => e.organizerId === user?.id).length },
             { key: 'all', label: 'All Events', count: events.length },
           ].map((tab) => (
             <button
@@ -322,56 +439,193 @@ export function Events() {
         title="Create New Event"
         maxWidth="lg"
       >
-        <form className="space-y-4">
-          <Input
-            label="Event Title"
-            placeholder="What's your event about?"
-            required
-          />
-          
+        <form className="space-y-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Description
+              Event Title *
+            </label>
+            <Input
+              type="text"
+              placeholder="Coffee Tasting Workshop"
+              value={createForm.title}
+              onChange={(e) => setCreateForm({ ...createForm, title: e.target.value })}
+              maxLength={100}
+            />
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              {createForm.title.length}/100 characters
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Description *
             </label>
             <textarea
               rows={3}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 dark:bg-gray-800 dark:text-gray-100"
               placeholder="Describe your event..."
+              value={createForm.description}
+              onChange={(e) => setCreateForm({ ...createForm, description: e.target.value })}
+              maxLength={500}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 dark:bg-gray-800 dark:text-gray-100"
+            />
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              {createForm.description.length}/500 characters
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Date *
+              </label>
+              <Input
+                type="date"
+                value={createForm.date}
+                onChange={(e) => setCreateForm({ ...createForm, date: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Time *
+              </label>
+              <Input
+                type="time"
+                value={createForm.time}
+                onChange={(e) => setCreateForm({ ...createForm, time: e.target.value })}
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              {createForm.isVirtual ? 'Zoom/Video Link' : 'Location'}
+            </label>
+            <Input
+              type="text"
+              placeholder={createForm.isVirtual ? 'https://zoom.us/..." : "City, Venue Name, or Address"}
+              value={createForm.location}
+              onChange={(e) => setCreateForm({ ...createForm, location: e.target.value })}
             />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <Input
-              label="Date"
-              type="date"
-              required
-            />
-            <Input
-              label="Time"
-              type="time"
-              required
-            />
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Max Attendees
+              </label>
+              <Input
+                type="number"
+                min="1"
+                value={createForm.maxAttendees}
+                onChange={(e) => setCreateForm({ ...createForm, maxAttendees: parseInt(e.target.value) })}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Category
+              </label>
+              <select
+                value={createForm.category}
+                onChange={(e) => setCreateForm({ ...createForm, category: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 dark:bg-gray-800 dark:text-gray-100"
+              >
+                <option>Social</option>
+                <option>Workshop</option>
+                <option>Party</option>
+                <option>Sports</option>
+                <option>Educational</option>
+              </select>
+            </div>
           </div>
 
-          <Input
-            label="Location"
-            placeholder="Where will this take place?"
-            required
-          />
-
           <div className="flex items-center space-x-2">
-            <input type="checkbox" id="virtual" className="rounded" />
+            <input
+              type="checkbox"
+              id="virtual"
+              checked={createForm.isVirtual}
+              onChange={(e) => setCreateForm({ ...createForm, isVirtual: e.target.checked })}
+              className="rounded"
+            />
             <label htmlFor="virtual" className="text-sm text-gray-700 dark:text-gray-300">
               This is a virtual event
             </label>
           </div>
 
-          <div className="flex justify-end space-x-3 mt-6">
+          <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200 dark:border-gray-700">
             <Button variant="outline" onClick={() => setIsCreateModalOpen(false)}>
               Cancel
             </Button>
-            <Button variant="primary" type="submit">
+            <Button 
+              variant="primary" 
+              onClick={handleCreateEvent}
+              isLoading={isSubmitting}
+            >
               Create Event
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Advanced Filters Modal */}
+      <Modal
+        isOpen={isFiltersModalOpen}
+        onClose={() => setIsFiltersModalOpen(false)}
+        title="Advanced Filters"
+        maxWidth="md"
+      >
+        <form className="space-y-6">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Sort By
+            </label>
+            <select
+              value={filters.sortBy}
+              onChange={(e) => setFilters({ ...filters, sortBy: e.target.value as any })}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 dark:bg-gray-800 dark:text-gray-100"
+            >
+              <option value="upcoming">Upcoming First</option>
+              <option value="popular">Most Popular</option>
+              <option value="nearby">Nearby</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Event Type
+            </label>
+            <select
+              value={filters.eventType}
+              onChange={(e) => setFilters({ ...filters, eventType: e.target.value as any })}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 dark:bg-gray-800 dark:text-gray-100"
+            >
+              <option value="all">All Types</option>
+              <option value="virtual">Virtual Only</option>
+              <option value="inperson">In-Person Only</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Date Range
+            </label>
+            <select
+              value={filters.dateRange}
+              onChange={(e) => setFilters({ ...filters, dateRange: e.target.value as any })}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 dark:bg-gray-800 dark:text-gray-100"
+            >
+              <option value="week">This Week</option>
+              <option value="month">This Month</option>
+              <option value="all">All Upcoming</option>
+            </select>
+          </div>
+
+          <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+            <Button variant="outline" onClick={() => setIsFiltersModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="primary" onClick={() => setIsFiltersModalOpen(false)}>
+              Apply Filters
             </Button>
           </div>
         </form>
