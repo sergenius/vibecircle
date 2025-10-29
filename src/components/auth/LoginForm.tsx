@@ -28,6 +28,8 @@ export function LoginForm() {
     setError,
   } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
+    mode: 'onSubmit', // Only validate on submit, not on every change
+    reValidateMode: 'onChange', // After first submit, validate on change
     defaultValues: {
       email: '',
       password: '',

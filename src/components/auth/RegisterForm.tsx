@@ -60,6 +60,8 @@ export function RegisterForm() {
     setError,
   } = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
+    mode: 'onSubmit', // Only validate on submit, not onChange
+    reValidateMode: 'onChange', // After first submit, validate on change
     defaultValues: {
       email: '',
       password: '',
